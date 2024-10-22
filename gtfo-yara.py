@@ -8,17 +8,16 @@ import yara
 import sys
 import getpass
 
-RED = '\033[31m'
-GREEN = '\033[32m'
-YELLOW = '\033[0;33m'
-CYAN = '\033[0;36m'
-BOLD = '\033[1m'
-RESET = '\033[0m'
+red = '\033[31m'
+green = '\033[32m'
+yellow = '\033[0;33m'
+cyan = '\033[0;36m'
+bold = '\033[1m'
+reset = '\033[0m'
 
-
-class CustomLogger(logging.Logger):
+class Logger(logging.Logger):
     def __init__(self, name, level=logging.DEBUG):
-        super(CustomLogger, self).__init__(name, level)
+        super(Logger, self).__init__(name, level)
         self.console_handler = logging.StreamHandler()
         self.console_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(message)s')
@@ -29,25 +28,20 @@ class CustomLogger(logging.Logger):
         self.setLevel(level)
         self.console_handler.setLevel(level)
 
-
-logging.setLoggerClass(CustomLogger)
+logging.setLoggerClass(Logger)
 
 log = logging.getLogger(__name__)
 log.set_level(logging.INFO)
 
 
 def get_sudo_password():
-    """Securely gets the sudo password from the user.
 
-    Returns:
-        str: sudo password.
-    """
-    log.info(f"{CYAN}{BOLD}Enter sudo password:\n{RESET}")
+    log.info(f"{cyan}{bold}Enter sudo password:\n{reset}")
     return getpass.getpass("> ")
 
 
 def execute_command(command, sudo_password=None):
-    """Executes a given command using subprocess and returns the output."""
+
     if sudo_password:
         command = f"echo {sudo_password} | sudo -S {command}"
     try:
@@ -59,7 +53,7 @@ def execute_command(command, sudo_password=None):
 
 
 def check_suid_bins():
-    """Checks if any binaries in PATH are SUID or SGID binaries."""
+
     suid_bins = []
     for binary in os.listdir('/usr/bin'):
         binary_path = os.path.join('/usr/bin', binary)
@@ -72,12 +66,12 @@ def check_suid_bins():
                     "SUID": file_properties.get("Owner") if file_properties.get("SUID") else None,
                     "SGID": file_properties.get("Group") if file_properties.get("SGID") else None
                 })
-                log.warning(f"Found binary {YELLOW}{BOLD}{binary}{RESET}: {binary_path}")
+                log.warning(f"Found binary {yellow}{bold}{binary}{reset}: {binary_path}")
     return suid_bins
 
 
 def check_suid_sgid(file_path):
-    """Check if the SUID or SGID bit is set on the file."""
+
     try:
         file_stat = os.stat(file_path)
         mode = file_stat.st_mode
@@ -91,43 +85,42 @@ def check_suid_sgid(file_path):
 
 
 def check_binaries_with_yara(rule_path, binaries, sudo_password):
-    """Checks the provided binaries against YARA rules."""
+
     rules = yara.compile(filepath=rule_path)
 
-    log.info(f"{CYAN}{BOLD}The verification for each binary has begun...\n{RESET}")  
+    log.info(f"{cyan}{bold}The verification for each binary has begun...\n{reset}") 
 
     for binary_info in binaries:
         binary_path = binary_info['Path']
         if os.path.isfile(binary_path): 
             matches = rules.match(binary_path)
             if matches:
-                log.info(f"{RED}{BOLD}Match found in {binary_path}: {matches}{RESET}")
-                log.info(f"{RED}{BOLD}YARA matches for {binary_path}: {matches}") 
+                log.info(f"{red}{bold}YARA matches for {binary_path}: {matches}") 
             else:
-                log.info(f"{GREEN}{BOLD}No matches found for {binary_path}.") 
+                log.info(f"{green}{bold}No matches found for {binary_path}.") 
         else:
-            log.warning(f"{RED}{BOLD}Skipping {binary_path}, not a file.{RESET}")
+            log.warning(f"{red}{bold}Skipping {binary_path}, not a file.{reset}")
 
 
 def main():
-    sudo_password = get_sudo_password()  
-    print(f"{CYAN}{BOLD}Searching for SUID/SGID binaries...\n{RESET}")
+    sudo_password = get_sudo_password() 
+    print(f"{cyan}{bold}Searching for SUID/SGID binaries...\n{reset}")
     suid_binaries = check_suid_bins()
     if suid_binaries:
-        print(f"{CYAN}{BOLD}\nThe following binary files will be sent for verification by the YARA rule:\n {RESET}")
+        print(f"{cyan}{bold}\nThe following binary files will be sent for verification by the YARA rule:\n {reset}")
         for bin_info in suid_binaries:
-            print(f"{YELLOW}{BOLD}Binary:{RESET} {bin_info['Binary']}, {YELLOW}{BOLD}Path:{RESET} {bin_info['Path']}, {YELLOW}{BOLD}Owner:{RESET} {bin_info['SUID']}, {YELLOW}{BOLD}Group:{RESET} {bin_info['SGID']}")
+            print(f"{yellow}{bold}Binary:{reset} {bin_info['Binary']}, {yellow}{bold}Path:{reset} {bin_info['Path']}, {yellow}{bold}Owner:{reset} {bin_info['SUID']}, {yellow}{bold}Group:{reset} {bin_info['SGID']}")
 
-        print()  
+        print() 
 
         if len(sys.argv) != 2:
-            print(f"{RED}Usage: python script.py <yara_rule.yara>{RESET}")
+            print(f"{red}Usage: python script.py <yara_rule.yara>{reset}")
             sys.exit(1)
 
         rule_path = sys.argv[1]
         check_binaries_with_yara(rule_path, suid_binaries, sudo_password)
     else:
-        print(f"{RED}No SUID/SGID binaries found.{RESET}")
+        print(f"{red}No SUID/SGID binaries found.{reset}")
 
 
 if __name__ == "__main__":
