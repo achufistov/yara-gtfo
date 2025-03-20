@@ -7,7 +7,7 @@
 pip install -r requirements.txt
 ```
 2. Execute the following command:
-```python
+```bash
 python3 main/main.py --help                                                                                              
 usage: main.py [-h] [-o OUTPUT] general_rules additional_rules
 
@@ -23,6 +23,6 @@ options:
                         Path to the output file for saving results
 ```
 3. Usage example for debian:
-```python
+```bash
 python3 main/main.py yara_rulesets/general_rules.yar yara_rulesets/additional_rulesets/debian/debian_additional_rules.yar -o results_for_my_container.txt
 ```
