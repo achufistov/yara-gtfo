@@ -3,6 +3,9 @@
 ## Usage:
 
 1. Install the packages from requirements.txt
+```bash
+pip install -r requirements.txt
+```
 2. Execute the following command:
 ```python
 python3 main/main.py --help                                                                                              
