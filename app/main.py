@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from colorama import Fore, Style, init
 import textwrap
+import re
 from exploits import shell_bins, sudo_bins, suid_bins, capabilities  # Импортируем словари
 from db_handler import create_connection, create_table, insert_binary, get_all_binaries
 
@@ -139,6 +140,34 @@ def execute_exploit(command):
         print(Fore.RED + f"An error occurred: {e}" + Style.RESET_ALL)
         return False
 
+def get_command_with_variables(command):
+    # Если команда является множеством, извлекаем первый элемент
+    if isinstance(command, set):
+        command = command.copy().pop()  # Создаем копию множества и извлекаем элемент
+
+    # Удаляем фигурные скобки, если они есть
+    if command.startswith('{') and command.endswith('}'):
+        command = command[1:-1]
+
+    # Словарь переменных и их подсказок
+    variables = {
+        "LFILE": "Enter the file path for LFILE: ",
+        "URL": "Enter the URL for URL: ",
+        "RHOST": "Enter the remote host for RHOST: ",
+        "RPORT": "Enter the port for RPORT: ",
+        "LDIR": "Enter the local directory for LDIR: "
+    }
+
+    # Проверяем, какие переменные присутствуют в команде
+    for var in variables:
+        if f"{var}=" in command or f"${var}" in command:
+            value = input(Fore.YELLOW + variables[var] + Style.RESET_ALL)
+            # Используем регулярное выражение для замены всей переменной
+            command = re.sub(rf"{var}=[^&\s]*", f"{var}={value}", command)
+            command = command.replace(f"${var}", value)
+
+    return command
+
 def user_interaction(conn):
     while True:  # Цикл для возврата к выбору команд
         binaries = get_all_binaries(conn)
@@ -173,8 +202,8 @@ def user_interaction(conn):
                 for i, (command, category) in enumerate(available_commands, start=1):
                     print(f"{i}. [{category}] {command}")
 
-                command_choice = input("Enter the number of the command you want to execute (or 'skip' to skip): ")
-                if command_choice.lower() == 'skip':
+                command_choice = input("Enter the number of the command you want to execute (or 's' to skip): ")
+                if command_choice.lower() == 's':
                     print("Skipping...")
                     break  # Выход из цикла выбора команды
 
@@ -189,7 +218,11 @@ def user_interaction(conn):
                     # Запрашиваем подтверждение выполнения
                     confirm = input(Fore.YELLOW + "Are you sure you want to execute this command? (yes/no): " + Style.RESET_ALL)
                     if confirm.lower() == 'yes':
-                        if execute_exploit(selected_command):
+                        # Запрашиваем значения для переменных, если они есть
+                        command_with_variables = get_command_with_variables(selected_command)
+
+                        # Теперь выполняем команду с подставленными переменными
+                        if execute_exploit(command_with_variables):
                             # Если команда выполнена успешно, запускаем новую оболочку
                             print(Fore.GREEN + "You now have elevated privileges. Type 'exit' to return to the program." + Style.RESET_ALL)
                             subprocess.call(['/bin/sh'])  # Запускаем новую оболочку
@@ -202,7 +235,7 @@ def user_interaction(conn):
 
         print("Thank you for using yara-gtfo")
         break  # Выход из цикла после завершения работы
-
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Check binary files using YARA rules.')
     parser.add_argument('general_rules', help='Path to the general YARA rule file')

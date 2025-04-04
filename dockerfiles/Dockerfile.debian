@@ -6,14 +6,15 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     yara \
     git \
-    sqlite3 \ 
-    sudo
+    sqlite3 \
+    sudo \
+    && apt-get clean
 
 # Установка Python-зависимостей
 RUN pip3 install --break-system-packages colorama requests bs4
 
 # Создание пользователя с минимальными правами
-RUN useradd -m appuser
+RUN useradd -m appuser && echo "appuser:1234" | chpasswd && adduser appuser sudo
 
 # Создание рабочей директории
 WORKDIR /app
